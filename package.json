@@ -1,0 +1,26 @@
+{
+  "name": "github-trending-cli",
+  "version": "1.0.0",
+  "description": "CLI para consultar los repositorios en tendencia de GitHub desde la terminal.",
+  "type": "module",
+  "main": "app.js",
+  "bin": {
+    "trending-repos": "./app.js"
+  },
+  "scripts": {
+    "dev": "node app.js",
+    "start": "node app.js",
+    "test": "node --test \"src/lib/*.test.js\"",
+    "lint": "node --check app.js && node --check src/consts/options.js && node --check src/lib/argsParser.js && node --check src/lib/githubApi.js && node --check src/lib/formatter.js"
+  },
+  "keywords": [
+    "cli",
+    "github",
+    "trending",
+    "repositories"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
