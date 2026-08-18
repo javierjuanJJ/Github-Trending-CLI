@@ -11,7 +11,7 @@
     "dev": "node app.js",
     "start": "node app.js",
     "test": "node --test \"src/lib/*.test.js\"",
-    "lint": "node --check app.js && node --check src/consts/options.js && node --check src/lib/argsParser.js && node --check src/lib/githubApi.js && node --check src/lib/formatter.js"
+    "lint": "node --check app.js && node --check src/consts/options.js && node --check src/lib/argsParser.js && node --check src/lib/githubApi.js && node --check src/lib/formatter.js && node --check src/lib/trending.js"
   },
   "keywords": [
     "cli",

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { parseArguments, validateOptions } from './src/lib/argsParser.js';
-import { fetchTrendingRepositories, sortRepositoriesByStars } from './src/lib/githubApi.js';
-import { formatRepositoriesOutput } from './src/lib/formatter.js';
+import { getTrendingRepositoriesOutput } from './src/lib/trending.js';
 
 function formatErrorMessage(error) {
   if (error.name === 'TypeError' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
@@ -21,24 +20,15 @@ function handleFatalError(error) {
   process.exit(1);
 }
 
-function invokeCli() {
-  try {
-    const rawArgs = process.argv.slice(2);
-    const parsed = parseArguments(rawArgs);
-    const options = validateOptions(parsed);
-
-    return fetchTrendingRepositories(options.duration, options.limit)
-      .then(sortRepositoriesByStars)
-      .then(formatRepositoriesOutput)
-      .then(console.log)
-      .catch(handleFatalError);
-  } catch (error) {
-    handleFatalError(error);
-  }
+let options;
+try {
+  const rawArgs = process.argv.slice(2);
+  const parsed = parseArguments(rawArgs);
+  options = validateOptions(parsed);
+} catch (error) {
+  handleFatalError(error);
 }
 
-function main() {
-  invokeCli();
-}
-
-main();
+getTrendingRepositoriesOutput(options.duration, options.limit)
+  .then(console.log)
+  .catch(handleFatalError);

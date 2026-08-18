@@ -34,7 +34,8 @@ Github-Trending-CLI/
 │       ├── githubApi.js          # calculateStartDate + fetchTrendingRepositories + sortRepositoriesByStars
 │       ├── githubApi.test.js
 │       ├── formatter.js          # formatRepositoriesOutput
-│       └── formatter.test.js
+│       ├── formatter.test.js
+│       ├── trending.js           # getTrendingRepositoriesOutput (fetch + sort + format)
 ├── spec/
 │   ├── constitution/             # mission.md, tech-stack.md, roadmap.md
 │   └── features/001-github-trending-cli/   # spec.md, plan.md, tasks.md
@@ -60,32 +61,42 @@ Github-Trending-CLI/
 ### 3.2 Restricción: sin funciones `async` en `app.js`
 
 `app.js` **no declara ninguna función `async`** ni usa `await`. La orquestación síncrona
-(steps 1 y 2) vive dentro de un `try/catch`; la parte asíncrona (step 3 y siguientes) se encadena
-con promesas:
+(steps 1 y 2) corre en el top-level del módulo dentro de un `try/catch`; la parte asíncrona
+(step 3 y siguientes) vive en `src/lib/trending.js` como función `async`
+(`getTrendingRepositoriesOutput`) y se encadena desde `app.js` con promesas.
 
 ```js
-function invokeCli() {
-  try {
-    // ... parse + validate (síncrono)
-    return fetchTrendingRepositories(options.duration, options.limit)
-      .then(sortRepositoriesByStars)
-      .then(formatRepositoriesOutput)
-      .then(console.log)
-      .catch(handleFatalError);
-  } catch (error) {
-    handleFatalError(error);
-  }
+// app.js — top-level, sin funciones de orquestación ni `main()`
+let options;
+try {
+  const rawArgs = process.argv.slice(2);
+  const parsed = parseArguments(rawArgs);
+  options = validateOptions(parsed);
+} catch (error) {
+  handleFatalError(error);
+}
+
+getTrendingRepositoriesOutput(options.duration, options.limit)
+  .then(console.log)
+  .catch(handleFatalError);
+```
+
+El código asíncrono está encapsulado en `src/lib/trending.js`:
+
+```js
+// src/lib/trending.js
+export async function getTrendingRepositoriesOutput(duration, limit) {
+  const repositories = await fetchTrendingRepositories(duration, limit);
+  const sorted = sortRepositoriesByStars(repositories);
+  return formatRepositoriesOutput(sorted);
 }
 ```
 
-`main()` **solo llama a funciones**: su único cuerpo es `invokeCli();`, de modo que
-concentra toda la lógica de orquestación en `invokeCli()`.
+**No** existen las funciones `main()` ni `invokeCli()`: la lógica de orquestación se ejecuta
+directamente en el top-level de `app.js` y la parte asíncrona delega en `getTrendingRepositoriesOutput`.
 
 Esto mantiene el requisito de que `app.js` sea el **único gestor de errores** (ver 3.3):
 los errores asíncronos caen en `.catch(handleFatalError)` y los síncronos en el `catch` del `try/catch`.
-
-**No** se usa el método `run()` para arrancar la aplicación (nombre reservado/evitado por convención):
-el flujo comienza llamando directamente a `main()`, que a su vez delega en `invokeCli()`.
 
 ### 3.3 Restricción: solo `app.js` captura errores
 
@@ -110,7 +121,7 @@ el flujo comienza llamando directamente a `main()`, que a su vez delega en `invo
 
 Se usa el runner nativo de Node (`node --test`) y `node:assert/strict`, evitando dependencias externas
 (alineado con "sin dependencias pesadas"). Los tests se colocan junto a las librerías:
-`src/lib/*.test.js`. Total: **19 tests** en 6 suites.
+`src/lib/*.test.js`. Total: **21 tests** en 7 suites.
 
 ---
 
@@ -177,3 +188,34 @@ git reset HEAD~1           # quita el commit y deja los cambios sin preparar (un
 
 > **Nota:** `.gitignore` excluye `node_modules/` y `*.zip`, por lo que el paquete ZIP de la entrega
 > no se versiona y no interfiere con el historial.
+
+---
+
+## 6. Registro de cambios (cambios posteriores a la feature)
+
+### 6.1 Refactor: eliminar `main()`/`invokeCli()` y mover el orquestador a `src/lib/trending.js`
+
+**Qué se hizo:** en `app.js` se eliminaron las funciones `main()` e `invokeCli()`. La orquestación
+síncrona (parse + validate) ahora corre en el top-level del módulo dentro de un `try/catch`, y la parte
+asíncrona (fetch + sort + format) se encapsuló en una función nueva de `src/lib`:
+
+```
+src/lib/trending.js   # NUEVO: getTrendingRepositoriesOutput(duration, limit)
+```
+
+**Archivos afectados:**
+- `app.js` — quitadas `main()`/`invokeCli()`; lógica en top-level; llamada a `getTrendingRepositoriesOutput`.
+- `src/lib/trending.js` — añadido (nuevo módulo que combina `fetchTrendingRepositories`, `sortRepositoriesByStars` y `formatRepositoriesOutput`).
+
+**Cómo revertir:** el refactor es un único commit. Para deshacerlo:
+
+```bash
+# Revertir el refactor en un commit nuevo (conserva el historial)
+git revert <hash-del-commit-del-refactor>
+
+# O, si aún no se ha publicado, resetear a su padre
+git reset --hard <hash-del-commit-anterior-al-refactor>
+```
+
+Después del `git revert`, `app.js` volverá a tener `invokeCli()` + `main()` y se eliminará
+`src/lib/trending.js`.
