@@ -64,14 +64,28 @@ Github-Trending-CLI/
 con promesas:
 
 ```js
-fetchTrendingRepositories(options.duration, options.limit)
-  .then((repositories) => { /* sort + format + print */ })
-  .catch(handleFatalError);
+function invokeCli() {
+  try {
+    // ... parse + validate (síncrono)
+    return fetchTrendingRepositories(options.duration, options.limit)
+      .then(sortRepositoriesByStars)
+      .then(formatRepositoriesOutput)
+      .then(console.log)
+      .catch(handleFatalError);
+  } catch (error) {
+    handleFatalError(error);
+  }
+}
 ```
+
+`main()` **solo llama a funciones**: su único cuerpo es `invokeCli();`, de modo que
+concentra toda la lógica de orquestación en `invokeCli()`.
 
 Esto mantiene el requisito de que `app.js` sea el **único gestor de errores** (ver 3.3):
 los errores asíncronos caen en `.catch(handleFatalError)` y los síncronos en el `catch` del `try/catch`.
-**No** se usa ningún método `run()` para arrancar la aplicación: el flujo comienza llamando directamente a `main()`.
+
+**No** se usa el método `run()` para arrancar la aplicación (nombre reservado/evitado por convención):
+el flujo comienza llamando directamente a `main()`, que a su vez delega en `invokeCli()`.
 
 ### 3.3 Restricción: solo `app.js` captura errores
 

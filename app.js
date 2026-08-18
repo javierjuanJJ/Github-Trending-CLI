@@ -21,23 +21,24 @@ function handleFatalError(error) {
   process.exit(1);
 }
 
-function main() {
-  let options;
+function invokeCli() {
   try {
     const rawArgs = process.argv.slice(2);
     const parsed = parseArguments(rawArgs);
-    options = validateOptions(parsed);
+    const options = validateOptions(parsed);
+
+    return fetchTrendingRepositories(options.duration, options.limit)
+      .then(sortRepositoriesByStars)
+      .then(formatRepositoriesOutput)
+      .then(console.log)
+      .catch(handleFatalError);
   } catch (error) {
     handleFatalError(error);
   }
+}
 
-  fetchTrendingRepositories(options.duration, options.limit)
-    .then((repositories) => {
-      const sorted = sortRepositoriesByStars(repositories);
-      const output = formatRepositoriesOutput(sorted);
-      console.log(output);
-    })
-    .catch(handleFatalError);
+function main() {
+  invokeCli();
 }
 
 main();
